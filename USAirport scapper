@@ -1,0 +1,217 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+Let's assume that you combined the code from the previous 2 exercises with code
+from the lesson on how to build requests, and downloaded all the data locally.
+The files are in a directory "data", named after the carrier and airport:
+"{}-{}.html".format(carrier, airport), for example "FL-ATL.html".
+
+The table with flight info has a table class="dataTDRight". Your task is to
+use 'process_file()' to extract the flight data from that table as a list of
+dictionaries, each dictionary containing relevant data from the file and table
+row. This is an example of the data structure you should return:
+
+data = [{"courier": "FL",
+         "airport": "ATL",
+         "year": 2012,
+         "month": 12,
+         "flights": {"domestic": 100,
+                     "international": 100}
+        },
+         {"courier": "..."}
+]
+
+Note - year, month, and the flight data should be integers.
+You should skip the rows that contain the TOTAL data for a year.
+
+There are couple of helper functions to deal with the data files.
+Please do not change them for grading purposes.
+All your changes should be in the 'process_file()' function.
+
+The 'data/FL-ATL.html' file in the tab above is only a part of the full data,
+covering data through 2003. The test() code will be run on the full table, but
+the given file should provide an example of what you will get.
+"""
+import requests
+from bs4 import BeautifulSoup
+import os
+
+path  = 'c:\\Users\\BestBoss\\Downloads\\VSCode\\data\\'
+#os.mkdir(path)
+datadir = "data"
+output = "data"
+page = "http://www.transtats.bts.gov/Data_Elements.aspx?Data=2"
+
+def make_request():
+    s = requests.Session()
+    cookies = {
+        'ASP.NET_SessionId': '31eisxhazb1cbe3cmxch5im2',
+        'ASPSESSIONIDCCSTBCBR': 'HEGCNNGADBHDACGNENECKBLO',
+        'ASPSESSIONIDAAQTCDAQ': 'HFFFPLNBAFHPGALNPFMFLJAI',
+        'f5avraaaaaaaaaaaaaaaa_session_': 'OBFOHPOCEBPJNKNBIMODPOHFJJPKHMLAGDNGFHMLJCHGKKFCHLJFILJDEFOKPHHDPJKDLFJAHCLGMFHNDOAAHGBBAPDBJIPDJCOPJKNBJHLOJGHMCBKKMOJNLJECMFGH',
+    }
+
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'en-GB,en;q=0.9,en-US;q=0.8',
+        'Cache-Control': 'max-age=0',
+        'Connection': 'keep-alive',
+        # Requests sorts cookies= alphabetically
+        # 'Cookie': 'ASP.NET_SessionId=31eisxhazb1cbe3cmxch5im2; ASPSESSIONIDCCSTBCBR=HEGCNNGADBHDACGNENECKBLO; ASPSESSIONIDAAQTCDAQ=HFFFPLNBAFHPGALNPFMFLJAI; f5avraaaaaaaaaaaaaaaa_session_=OBFOHPOCEBPJNKNBIMODPOHFJJPKHMLAGDNGFHMLJCHGKKFCHLJFILJDEFOKPHHDPJKDLFJAHCLGMFHNDOAAHGBBAPDBJIPDJCOPJKNBJHLOJGHMCBKKMOJNLJECMFGH',
+        'DNT': '1',
+        'Origin': 'https://www.transtats.bts.gov',
+        'Referer': 'https://www.transtats.bts.gov/Data_Elements.aspx?Data=2',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0',
+        'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Microsoft Edge";v="120"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+    }
+
+    params = {
+        'Data': '2',
+    }
+
+    r = s.get("https://www.transtats.bts.gov/Data_Elements.aspx",headers=headers, cookies=cookies, params=params ,verify=False)
+    soup = BeautifulSoup(r.text)
+    viewstate = soup.find('input', {'id': '__VIEWSTATE'})
+    eventvalidation = soup.find('input', {'id': '__EVENTVALIDATION'})
+    viewstategenerator = soup.find('input', {'id':'__VIEWSTATEGENERATOR'})
+    viewstategenerator_value =viewstategenerator.get('value')
+    viewstate_value = viewstate.get('value')
+    eventvalidation_value = eventvalidation.get('value')
+    CarrierList = []
+    select_carrier = soup.find('select', {'id':'CarrierList'})
+    option_carrier = select_carrier.findAll('option')
+
+    for option_tag in option_carrier:
+        carrier_code = option_tag.get('value')
+        if carrier_code in ['All','AllUS', 'AllForeign','AllScheduled']:
+            pass
+        else:
+            CarrierList.append(carrier_code)
+    
+
+    AirportList = []
+    select_airport = soup.find('select', {'id':'AirportList'})
+    option_airport = select_airport.findAll('option')
+    #airports = [tag.get('value') for tag in option_airport if tag.get('value') not in ['All', 'AllMajors','AllOthers']]
+    for option_tag in option_airport:
+        airport_code = option_tag.get('value')
+        if airport_code in ['All', 'AllMajors','AllOthers']:
+            pass
+        else:
+            AirportList.append(airport_code)
+            
+    
+    s = requests.Session()
+    for carrier in CarrierList:
+        for airport in AirportList:
+            r = s.post("https://www.transtats.bts.gov/Data_Elements.aspx?Data=2",data = {
+                '__EVENTTARGET': '',
+                '__EVENTARGUMENT': '',
+                '__VIEWSTATE': viewstate_value,
+                '__VIEWSTATEGENERATOR': viewstategenerator_value,
+                '__EVENTVALIDATION': eventvalidation_value,
+                "CarrierList": carrier,
+                "AirportList": airport,
+                "Submit": "Submit"}, params=params, cookies=cookies, headers=headers,verify=False)
+            soup = BeautifulSoup(r.text)
+            if soup.find(string="No Record found.") is None:
+                print('Saving record for '+ carrier +' in ' + airport)
+                with open(os.path.join(output,"{}-{}.html".format(carrier, airport)), 'w',encoding="utf-8") as f:
+                    f.write(r.text) 
+            else:
+                print('No record found for ' + carrier + ' in ' + airport)    
+"""
+def open_zip(datadir):
+    with ZipFile('{0}.zip'.format(datadir), 'r') as myzip:
+        myzip.extractall()
+""" 
+
+def process_all(datadir):
+    files = [f for f in os.listdir(datadir) if f.endswith(".html")]
+    return files
+
+
+def process_file(file):
+
+    #This function extracts data from the file given as the function argument in
+    #a list of dictionaries. This is example of the data structure you should
+    #return:
+    path  = 'c:\\Users\\BestBoss\\Downloads\\VSCode\\data\\'
+    file_name =  file[len(path):len(file)- 5]
+    # Split the file name at the '-' character
+    parts = file_name.split('-')
+    
+    # The part before '-' is the first element of the list
+    carrier = parts[0]
+
+    # The part after '-' is the second element of the list
+    airport = parts[1]
+
+
+    with open(file, "r") as html:
+        soup = BeautifulSoup(html)
+        table = soup.find('table', id="GridView1")
+
+        rows = table.find('tr')
+        data = []
+        rows = []
+        for tr in table.find_all('tr') [1:]:
+             td = tr.find_all('td')
+             row = []
+             for cell in td:
+                  value = cell.text.replace('\xa0','0')
+                  row.append(value)
+             if 'TOTAL' in row:
+                  continue
+             else:  
+                  rows.append(row)          
+
+        for item in rows:
+            info ={"carrier":carrier,
+                          "airport":airport,
+                          "year": item[0],
+                          "month":  item[1],
+                          "flights":{"domestic" : item[2],
+                                     "international" : item[3]}}
+            data.append(info)
+            with open(os.path.join(output,"{}-{}.txt".format(carrier, airport)), 'w',encoding="utf-8") as f:
+                        print("saving" + carrier + airport)
+                        for item in data:
+                            f.write(str(item) + "\n")
+            return data                
+                              
+
+
+def test():
+    print("Running a simple test...")
+    files = process_all(datadir)
+    data = []
+    # Test will loop over three data files.
+    for f in files:
+        file = 'c:\\Users\\BestBoss\\Downloads\\VSCode\\data\\' + f
+
+        data += process_file(file)
+        
+    assert len(data) == 399  # Total number of rows
+    for entry in data[:3]:
+        assert type(entry["year"]) == int
+        assert type(entry["month"]) == int
+        assert type(entry["flights"]["domestic"]) == int
+        assert len(entry["airport"]) == 3
+        assert len(entry["courier"]) == 2
+    assert data[0]["courier"] == 'FL'
+    assert data[0]["month"] == 10
+    assert data[-1]["airport"] == "ATL"
+    assert data[-1]["flights"] == {'international': 108289, 'domestic': 701425}
+    
+    print("... success!")
+
+if __name__ == "__main__":
+    test()
